@@ -106,13 +106,31 @@ class UserApiController extends \VuFindApi\Controller\ApiController
 
         /*$request = $this->getRequest()->getQuery()->toArray()
             + $this->getRequest()->getPost()->toArray();*/
-        $request = $this->getRequest()->getPost();
 
+        $request = $this->getRequest();
+        $getParams = $request->getQuery()->toArray();
+
+        // AK: Set CSRF hash to post params so that we can use login() method
+        $postParams = $this->getRequest()->getPost();
+        $postParams['csrf'] = $this->getAuthManager()->getCsrfHash();
+
+        // AK: Get post JSON body and add parameters to the request for passing it
+        //     on to the login function
+        $postBodyJson = $request->getContent();
+        $postBodyArr = json_decode($postBodyJson, true);
+        $postParams['username'] = $postBodyArr['username'] ?? null;
+        $postParams['password'] = $postBodyArr['password'] ?? null;
+
+        // AK: Login
         if ($this->getAuthManager()->loginEnabled()) {
-            $user = $this->getAuthManager()->login($request);
+            try {
+                $user = $this->getAuthManager()->login($this->getRequest());
+            } catch (\Exception $e) {
+                throw new \Exception('Error!');
+            }
         }
 
-        $mode = $request['mode'] ?? 'default';
+        $mode = $getParams['mode'] ?? 'default';
 
         if ('apa' === strtolower($mode)) {
             $this->outputMode = 'xml';
@@ -121,8 +139,6 @@ class UserApiController extends \VuFindApi\Controller\ApiController
             $xml->addChild('status');
             $xml->addChild('userid');
         }
-        
-
 
         return $this->output($xml, self::STATUS_OK);
     }
