@@ -29,6 +29,7 @@ namespace AkSearchApi\Controller;
 
 use SimpleXMLElement;
 use Zend\ServiceManager\ServiceLocatorInterface;
+use VuFind\Cache\Manager as CacheManager;
 
 /**
  * User API controller.
@@ -44,14 +45,24 @@ class UserApiController extends \VuFindApi\Controller\ApiController
 {
     use \AkSearchApi\Controller\ApiTrait;
     use \VuFind\Log\LoggerAwareTrait;
+    use \VuFind\ILS\Driver\CacheTrait;
 
+
+    /**
+	 * Cache manager
+	 *
+	 * @var CacheManager
+	 */
+    protected $cache;
+    
     /**
      * Constructor
      *
      * @param ServiceLocatorInterface $sm Service manager
      */
-    public function __construct(ServiceLocatorInterface $sm) {
+    public function __construct(ServiceLocatorInterface $sm, CacheManager $cache) {
         parent::__construct($sm);
+        $this->cache = $cache;
     }
 
     /**
@@ -99,48 +110,242 @@ class UserApiController extends \VuFindApi\Controller\ApiController
         return parent::onDispatch($e);
     }
 
+    /**
+     * Authentication action for AKsearch user with Alma
+     *
+     * @return \Zend\Http\Response
+     */
     public function authAction() {
+        // Check permission
         if ($result = $this->isAccessDenied('access.api.AK.User.Auth')) {
             return $result;
         }
 
-        /*$request = $this->getRequest()->getQuery()->toArray()
-            + $this->getRequest()->getPost()->toArray();*/
+        // Check if login is enabled
+        if (!$this->getAuthManager()->loginEnabled()) {
+            return $this->output([], self::STATUS_ERROR, 423, 'Login not enabled');
+        }
 
+        // Get HTTP request object
         $request = $this->getRequest();
+
+        // Get request method (GET, POST, ...)
+        $requestMethod = $request->getMethod();
+        
+        // Check if we got a POST request
+		if ($requestMethod != 'POST') {
+            return $this->output([], self::STATUS_ERROR, 405,
+                'Only POST requests are allowed');
+        }
+        
+        // Initialize variables for the return value
+        // U = Unknown (Default: we don't know yet if the credentials are valid)
+        $isValid = 'U';
+        // U = Unknown (Default: we don't know yet if the user exists)
+        $userExists = 'U';
+        // U = Unknown (Default: we don't know yet if the user account is expired)
+		$isExpired = 'U';
+		$expired = null;
+		$expireDateTS = null;
+        $expiryDateFormatted = null;
+        // U = Unknown (Default: We don't know if the user has blocks)
+		$isBlocked = 'U'; 
+		$blocks = null;
+		$hasError = null;
+		$errorMsg = null;
+		$userGroupCode = null;
+        $userGroupDesc = null;
+        // Default HTTP status code for output
+        $httpStatusCode = 200;
+        // Default status for output
+        $status = self::STATUS_OK;
+        
+        // Get GET params
         $getParams = $request->getQuery()->toArray();
 
-        // AK: Set CSRF hash to post params so that we can use login() method
+        // Get authentication mode
+        $authMode = $getParams['mode'] ?? 'default';
+
+        // HTTP status codes are dependent from auth mode. If mode "apa" is used, we
+        // always have to return status code "200".
+		$forbidden403 = ($authMode == 'apa') ? 200 : 403;
+
+        // Get POST params
         $postParams = $this->getRequest()->getPost();
+
+        // Set CSRF hash to post params so that we can use login() method
         $postParams['csrf'] = $this->getAuthManager()->getCsrfHash();
 
-        // AK: Get post JSON body and add parameters to the request for passing it
-        //     on to the login function
+        // Get post JSON body and add username and password parameters to the request
+        // for passing it on to the login function
         $postBodyJson = $request->getContent();
         $postBodyArr = json_decode($postBodyJson, true);
-        $postParams['username'] = $postBodyArr['username'] ?? null;
+        $username = $postBodyArr['username'] ?? null;
+        $postParams['username'] = $username;
         $postParams['password'] = $postBodyArr['password'] ?? null;
 
-        // AK: Login
-        if ($this->getAuthManager()->loginEnabled()) {
+        // Try to authenticate and process the result
+        try {
+            // Try to login and get user object
+            $user = $this->getAuthManager()->login($this->getRequest());
+
+            // If we got this far without an exception thrown in the login function,
+            // the user with the given credentials exists.
+            $userExists = 'Y';
+
+            // On successful login, some user information from Alma is written
+            // to the object cache (see Alma ILS driver). We get the object cache
+            // here and use it to query the user information for further
+            // processing.
+            $cache = $this->cache->getCache('object');
+            
+            // Get user group code from cache
+            $userGroupCode = $cache->getItem(
+                'Alma_User_' . $username . '_GroupCode'
+            );
+
+            // Get user group description from cache
+            $userGroupDesc = $cache->getItem(
+                'Alma_User_' . $username . '_GroupDesc'
+            );
+
+            // Get user expiry date from cache
+            $expiryDateFormatted = $cache->getItem(
+                'Alma_User_' . $username . '_ExpiryDate'
+            );
+
+            // Check for account blocks
             try {
-                $user = $this->getAuthManager()->login($this->getRequest());
+                if ($ilsBlocks = $this->getILS()->getAccountBlocks($user)) {
+                    $blocks = [];
+                    foreach ($ilsBlocks as $key => $ilsBlock) {
+                        // We don't get a block code from 'getAccountBlocks'
+                        $blocks[$key]['code'] = 'none';
+                        $blocks[$key]['note'] = $ilsBlock;
+                    }
+                    $isBlocked = 'Y';
+                } else {
+                    $isBlocked = 'N';
+                }
             } catch (\Exception $e) {
-                throw new \Exception('Error!');
+                // We are not able to determine if the user has blocks so we assume
+                // he has no blocks.
+                $isBlocked = 'N';
             }
+
+            // Check if user account is expired
+            try {
+                // Get date format from config
+                $dateFormat = $this->getConfig()->Site->displayDateFormat ?? 'Y-m-d';
+                // Get DateTime object for expirty date. We use 'UTC' time for being
+                // able to do better time comparison below.
+                $expiryDateObj = \DateTime::createFromFormat(
+                    $dateFormat,
+                    $expiryDateFormatted,
+                    new \DateTimeZone('UTC')
+                );
+                // Set time of expiry to 23:59:59 o'clock
+                $expiryDateObj->setTime(23, 59, 59);
+                // Get the timestamp of the exiry date
+                $expireDateTS = $expiryDateObj->getTimestamp();
+                // Get "now" timestamp
+                $nowTs = time();
+                // Compare UTC "now timestamp" with UTC "expiry timestamp"
+                if ($expireDateTS < $nowTs) {
+                    $isExpired = 'Y';
+                    $expired['timestamp'] = $expireDateTS;
+                    $expired['formatted'] = $expiryDateFormatted;
+                } else {
+                    $isExpired = 'N';
+                }
+            } catch (\Exception $e) {
+                // We are not able to determine if the user account is expired so we
+                // assume it is not expired.
+                $isExpired = 'N';
+            }
+
+            // Check for general account validity
+            if ($isBlocked == 'Y' || $isExpired == 'Y') {
+                $isValid = 'N';
+                $status = self::STATUS_ERROR;
+                $httpStatusCode = $forbidden403;
+            } else {
+                $isValid = 'Y';
+                $httpStatusCode = 200;
+            }
+        } catch (\Exception $e) {
+            // User was not found in VuFind database and/or Alma with the given
+            // credentials.
+            $userExists = 'N';
+            $isValid = 'N';
+            $hasError = 'Y';
+            $status = self::STATUS_ERROR;
+            $errorMsg = $this->translate('Invalid Patron Login');
         }
 
-        $mode = $getParams['mode'] ?? 'default';
+        // Initialize content variable
+        $content = null;
 
-        if ('apa' === strtolower($mode)) {
-            $this->outputMode = 'xml';
-            $xml = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?>'
-                . '<response/>');
-            $xml->addChild('status');
-            $xml->addChild('userid');
+        // Switch between modes (mainly APA and default)
+        switch (strtolower($authMode)) {
+            case 'apa':
+                // APA authentication requires XML output format
+                $this->outputMode = 'xml';
+                $content = new SimpleXMLElement(
+                    '<?xml version="1.0" encoding="UTF-8"?><response/>'
+                );
+
+                // Default status: Username or password wrong
+                $status = '-1';
+
+                // Set status based on values we got above
+                if ($isValid === 'Y') {
+                    $status = 3; // User is allowed to authenticate
+                } else if ($isBlocked === 'Y' || $isExpired === 'Y') {
+                    $status = 1; // User blocked from access
+                }
+
+                $content->addChild('status', $status);
+                $content->addChild('userid', $username);
+                break;
+            default:
+                // Default output is in JSON format
+                $this->outputMode = 'json';
+
+                // Initialize return variable
+				$content = [];
+		
+				// Create the return array
+				$content['user']['isValid'] = $isValid;
+				$content['user']['exists'] = $userExists;
+                if ($userGroupDesc) {
+                    $content['user']['group']['desc'] = $userGroupDesc;
+                };
+				if ($userGroupCode) {
+                    $content['user']['group']['code'] = $userGroupCode;
+                };
+				$content['expired']['isExpired'] = $isExpired;
+				if ($expired) {
+                    $content['expired']['date'] = $expired;
+                }
+				$content['blocks']['isBlocked'] = $isBlocked;
+				if ($blocks) {
+                    $content['blocks']['reasons'] = $blocks;
+                }
+				if ($hasError) {
+                    $content['request']['hasError'] = $hasError;
+                }
+				if ($errorMsg) {
+                    // The error message from the database or ILS
+                    $content['request']['errorMsg'] = $errorMsg;
+                }
+
+                // Remove "null" values from array
+                $content = array_filter($content);
+                break;
         }
 
-        return $this->output($xml, self::STATUS_OK);
+        return $this->output($content, $status, $httpStatusCode);
     }
 }
 ?>

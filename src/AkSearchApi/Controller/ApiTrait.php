@@ -83,15 +83,13 @@ trait ApiTrait
             );
             return $response;
         } elseif ($this->outputMode == 'xml') {
+            // AK: Adding XML output
             $headers->addHeaderLine('Content-type', 'application/xml');
-            /*$content = '<?xml version="1.0" encoding="UTF-8"?>';
-            $content .= $data;*/
             if ($data instanceof \SimpleXMLElement) {
                 $response->setContent($data->asXML());
             } else {
                 throw new \Exception('Instance of SimpleXMLElement must be used');
             }
-            
             return $response;
         } else {
             throw new \Exception('Invalid output mode');
