@@ -13,6 +13,17 @@ $config = [
     ],
     'router' => [
         'routes' => [
+            'userApiLegacy' => [
+                'type' => 'Zend\Router\Http\Segment',
+                'verb' => 'post',
+                'options' => [
+                    'route'    => '/Api/User/[:action]',
+                    'defaults' => [
+                        'controller' => 'UserApi',
+                        'action' => 'Auth'
+                    ]
+                ]
+            ],
             'userApiV1' => [
                 'type' => 'Zend\Router\Http\Segment',
                 'verb' => 'get,post,options',
