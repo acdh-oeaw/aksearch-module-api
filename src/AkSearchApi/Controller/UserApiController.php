@@ -1,10 +1,10 @@
 <?php
 /**
- * User API controller.
+ * AK: User API controller.
  *
  * PHP version 7
  *
- * Copyright (C) AK Bibliothek Wien 2019.
+ * Copyright (C) AK Bibliothek Wien 2020.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2,
@@ -32,7 +32,7 @@ use Zend\ServiceManager\ServiceLocatorInterface;
 use VuFind\Cache\Manager as CacheManager;
 
 /**
- * User API controller.
+ * AK: User API controller.
  * 
  * @category AKsearch
  * @package  Controller
@@ -49,14 +49,14 @@ class UserApiController extends \VuFindApi\Controller\ApiController
 
 
     /**
-	 * Cache manager
+	 * AK: Cache manager
 	 *
 	 * @var CacheManager
 	 */
     protected $cache;
     
     /**
-     * Constructor
+     * AK: Constructor
      *
      * @param ServiceLocatorInterface $sm Service manager
      */
@@ -66,7 +66,7 @@ class UserApiController extends \VuFindApi\Controller\ApiController
     }
 
     /**
-     * Get Swagger specification JSON fragment for services provided by the
+     * AK: Get Swagger specification JSON fragment for services provided by the
      * controller
      *
      * @return string
@@ -79,6 +79,7 @@ class UserApiController extends \VuFindApi\Controller\ApiController
 
     /**
      * Execute the request
+     * AK: Checking for swagger in request
      *
      * @param \Zend\Mvc\MvcEvent $e Event
      *
@@ -111,7 +112,7 @@ class UserApiController extends \VuFindApi\Controller\ApiController
     }
 
     /**
-     * Authentication action for AKsearch user with Alma
+     * AK: Authentication action for AKsearch user with Alma
      *
      * @return \Zend\Http\Response
      */

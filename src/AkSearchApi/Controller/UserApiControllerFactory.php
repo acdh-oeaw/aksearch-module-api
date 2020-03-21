@@ -4,7 +4,7 @@
  *
  * PHP version 7
  *
- * Copyright (C) AK Bibliothek Wien 2019.
+ * Copyright (C) AK Bibliothek Wien 2020.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2,
@@ -31,7 +31,7 @@ use Interop\Container\ContainerInterface;
 use Zend\ServiceManager\Factory\FactoryInterface;
 
 /**
- * Factory for User API controller.
+ * AK: Factory for User API controller.
  * 
  * @category AKsearch
  * @package  Controller
@@ -42,7 +42,7 @@ use Zend\ServiceManager\Factory\FactoryInterface;
 class UserApiControllerFactory implements FactoryInterface
 {
     /**
-     * Create an object
+     * AK: Create an object
      *
      * @param ContainerInterface $container     Service manager
      * @param string             $requestedName Service being created
