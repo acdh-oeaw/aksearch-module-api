@@ -44,6 +44,7 @@ class UserApiController extends \VuFindApi\Controller\ApiController
     implements \VuFindApi\Controller\ApiInterface, \Zend\Log\LoggerAwareInterface
 {
     use \AkSearchApi\Controller\ApiTrait;
+    use \AkSearch\ILS\Driver\AlmaTrait;
     use \VuFind\Log\LoggerAwareTrait;
     use \VuFind\ILS\Driver\CacheTrait;
 
@@ -199,25 +200,37 @@ class UserApiController extends \VuFindApi\Controller\ApiController
             // here and use it to query the user information for further
             // processing.
             $cache = $this->cache->getCache('object');
+
+            // This is necessary as the cache key screated in Alma.php are also
+            // cleaned. We need the same key as created in Alma.php to get the
+            // cached values. This is especially important for our usernames that
+            // start with "$" as this character is not allowed in cache keys.
+            $cleanUsername = $this->getCleanCacheKey($username);
             
-            // Get user group code from cache
+            // Get user group code from cache. The value is set to the cache when
+            // calling the "login" method above, which in turn calls the
+            // "authenticate" function which finally calls the "getMyProfile"
+            // function from the ILS driver that actually sets the cache value.
             $userGroupCode = $cache->getItem(
-                'Alma_User_' . $username . '_GroupCode'
+                'Alma_User_' . $cleanUsername . '_GroupCode'
             );
 
-            // Get user group description from cache
+            // Get user group description from cache. See above for information about
+            // how the value was set to the cache.
             $userGroupDesc = $cache->getItem(
-                'Alma_User_' . $username . '_GroupDesc'
+                'Alma_User_' . $cleanUsername . '_GroupDesc'
             );
 
-            // Get user expiry date from cache
+            // Get user expiry date from cache. See above for information about how
+            // the value was set to the cache.
             $expiryDateFormatted = $cache->getItem(
-                'Alma_User_' . $username . '_ExpiryDate'
+                'Alma_User_' . $cleanUsername . '_ExpiryDate'
             );
 
             // Check for account blocks
             try {
-                if ($ilsBlocks = $this->getILS()->getAccountBlocks($user)) {
+                $patron = ['id' => $username];
+                if ($ilsBlocks = $this->getILS()->getAccountBlocks($patron)) {
                     $blocks = [];
                     foreach ($ilsBlocks as $key => $ilsBlock) {
                         // We don't get a block code from 'getAccountBlocks'
