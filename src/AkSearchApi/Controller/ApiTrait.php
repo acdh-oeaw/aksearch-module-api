@@ -50,7 +50,7 @@ trait ApiTrait
      * @param int    $httpCode A custom HTTP Status Code
      * @param string $message  Status message
      *
-     * @return \Zend\Http\Response
+     * @return \Laminas\Http\Response
      * @throws \Exception
      */
     protected function output($data, $status, $httpCode = null, $message = '')

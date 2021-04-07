@@ -28,7 +28,7 @@
 namespace AkSearchApi\Controller;
 
 use SimpleXMLElement;
-use Zend\ServiceManager\ServiceLocatorInterface;
+use Laminas\ServiceManager\ServiceLocatorInterface;
 use VuFind\Cache\Manager as CacheManager;
 
 /**
@@ -41,7 +41,7 @@ use VuFind\Cache\Manager as CacheManager;
  * @link     https://vufind.org/wiki/development:plugins:controllers Wiki
  */
 class UserApiController extends \VuFindApi\Controller\ApiController
-    implements \VuFindApi\Controller\ApiInterface, \Zend\Log\LoggerAwareInterface
+    implements \VuFindApi\Controller\ApiInterface, \Laminas\Log\LoggerAwareInterface
 {
     use \AkSearchApi\Controller\ApiTrait;
     use \AkSearch\ILS\Driver\AlmaTrait;
@@ -82,12 +82,12 @@ class UserApiController extends \VuFindApi\Controller\ApiController
      * Execute the request
      * AK: Checking for swagger in request
      *
-     * @param \Zend\Mvc\MvcEvent $e Event
+     * @param \Laminas\Mvc\MvcEvent $e Event
      *
      * @return mixed
      * @throws Exception\DomainException
      */
-    public function onDispatch(\Zend\Mvc\MvcEvent $e)
+    public function onDispatch(\Laminas\Mvc\MvcEvent $e)
     {
         // Add CORS headers and handle OPTIONS requests. This is a simplistic
         // approach since we allow any origin. For more complete CORS handling
@@ -115,7 +115,7 @@ class UserApiController extends \VuFindApi\Controller\ApiController
     /**
      * AK: Authentication action for AKsearch user with Alma
      *
-     * @return \Zend\Http\Response
+     * @return \Laminas\Http\Response
      */
     public function authAction() {
         // Check permission

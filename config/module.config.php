@@ -14,7 +14,7 @@ $config = [
     'router' => [
         'routes' => [
             'userApiLegacy' => [
-                'type' => 'Zend\Router\Http\Segment',
+                'type' => 'Laminas\Router\Http\Segment',
                 'verb' => 'post',
                 'options' => [
                     'route'    => '/Api/User/[:action]',
@@ -25,7 +25,7 @@ $config = [
                 ]
             ],
             'userApiV1' => [
-                'type' => 'Zend\Router\Http\Segment',
+                'type' => 'Laminas\Router\Http\Segment',
                 'verb' => 'get,post,options',
                 'options' => [
                     'route'    => '/api/v1/user/[:action]',
