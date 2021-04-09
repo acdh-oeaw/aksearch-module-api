@@ -43,7 +43,7 @@ trait ApiTrait
     /**
      * Send output data and exit.
      * AK: Add XML as possible return type.
-     *     Must be set with ... in controller.
+     *     Must be set with "xml" in controller.
      *
      * @param mixed  $data     The response data
      * @param string $status   Status of the request

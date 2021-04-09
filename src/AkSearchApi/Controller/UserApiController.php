@@ -201,7 +201,7 @@ class UserApiController extends \VuFindApi\Controller\ApiController
             // processing.
             $cache = $this->cache->getCache('object');
 
-            // This is necessary as the cache key screated in Alma.php are also
+            // This is necessary as the cache keys created in Alma.php are also
             // cleaned. We need the same key as created in Alma.php to get the
             // cached values. This is especially important for our usernames that
             // start with "$" as this character is not allowed in cache keys.
