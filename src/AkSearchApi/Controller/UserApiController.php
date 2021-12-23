@@ -170,8 +170,9 @@ class UserApiController extends \VuFindApi\Controller\ApiController
 
         // HTTP status codes are dependent from auth mode. If mode "apa" is used, we
         // always have to return status code "200".
+        $unauthorized401 = ($authMode == 'apa') ? 200 : 401;
 		$forbidden403 = ($authMode == 'apa') ? 200 : 403;
-
+        
         // Get POST params
         $postParams = $this->getRequest()->getPost();
 
@@ -295,6 +296,7 @@ class UserApiController extends \VuFindApi\Controller\ApiController
             $hasError = 'Y';
             $status = self::STATUS_ERROR;
             $errorMsg = $this->translate('Invalid Patron Login');
+            $httpStatusCode = $unauthorized401;
         }
 
         // Initialize content variable
