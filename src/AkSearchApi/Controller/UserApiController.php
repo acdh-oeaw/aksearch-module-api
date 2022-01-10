@@ -157,6 +157,7 @@ class UserApiController extends \VuFindApi\Controller\ApiController
 		$errorMsg = null;
 		$userGroupCode = null;
         $userGroupDesc = null;
+        $age = null;
         // Default HTTP status code for output
         $httpStatusCode = 200;
         // Default status for output
@@ -226,6 +227,12 @@ class UserApiController extends \VuFindApi\Controller\ApiController
             // the value was set to the cache.
             $expiryDateFormatted = $cache->getItem(
                 'Alma_User_' . $cleanUsername . '_ExpiryDate'
+            );
+
+            // Get user age from cache. See above for information about how the value
+            // was set to the cache.
+            $age = $cache->getItem(
+                'Alma_User_' . $cleanUsername . '_Age'
             );
 
             // Check for account blocks
@@ -330,7 +337,7 @@ class UserApiController extends \VuFindApi\Controller\ApiController
 
                 // Initialize return variable
 				$content = [];
-		
+                
 				// Create the return array
 				$content['user']['isValid'] = $isValid;
 				$content['user']['exists'] = $userExists;
@@ -340,6 +347,7 @@ class UserApiController extends \VuFindApi\Controller\ApiController
 				if ($userGroupCode) {
                     $content['user']['group']['code'] = $userGroupCode;
                 };
+                $content['user']['age'] = $age;
 				$content['expired']['isExpired'] = $isExpired;
 				if ($expired) {
                     $content['expired']['date'] = $expired;
@@ -357,11 +365,51 @@ class UserApiController extends \VuFindApi\Controller\ApiController
                 }
 
                 // Remove "null" values from array
-                $content = array_filter($content);
+                $content = $this->array_filter_recursive(
+                    $content,
+                    array($this, 'filterCallback')
+                );
                 break;
         }
 
         return $this->output($content, $status, $httpStatusCode);
     }
+
+    /**
+     * AK: Callback function for array_filter function.
+     * Default array_filter would not only filter out empty or null values, but also
+     * the number "0" (as it evaluates to false). So if a value would just be "0" it
+     * would not be displayed.
+     *
+     * @param   string $var The value of an array. In our case these are strings.
+     * 
+     * @return  boolean     False if $var is null or empty, true otherwise.
+     */
+    protected function filterCallback($var)
+    {
+        // Return false if $var is null or empty, but not "0" (as an integer)
+        if ($var == null || (is_string($var) && trim($var) == '')) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * AK: Apply array_filter recursively on nested arrays.
+     *
+     * @param array|mixed   $input     A (nested) array
+     * @param callable      $callback  Reference to a callback function
+     * 
+     * @return array The filtered nested array
+     */
+    protected function array_filter_recursive($input, $callback = null)
+    {
+        foreach ($input as &$val) {
+            if (is_array($val)) {
+                $val = $this->array_filter_recursive($val, $callback);
+            }
+        }
+        return array_filter($input, $callback);
+    } 
 }
 ?>
