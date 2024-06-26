@@ -27,6 +27,8 @@
  */
 namespace AkSearchApi\Controller;
 
+use Exception;
+
 /**
  * AK: Extending additional functionality for API controllers.
  *
@@ -51,7 +53,7 @@ trait ApiTrait
      * @param string $message  Status message
      *
      * @return \Laminas\Http\Response
-     * @throws \Exception
+     * @throws Exception
      */
     protected function output($data, $status, $httpCode = null, $message = '')
     {
@@ -88,11 +90,11 @@ trait ApiTrait
             if ($data instanceof \SimpleXMLElement) {
                 $response->setContent($data->asXML());
             } else {
-                throw new \Exception('Instance of SimpleXMLElement must be used');
+                throw new Exception('Instance of SimpleXMLElement must be used');
             }
             return $response;
         } else {
-            throw new \Exception('Invalid output mode');
+            throw new Exception('Invalid output mode');
         }
     }
 }

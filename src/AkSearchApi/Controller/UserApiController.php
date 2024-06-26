@@ -46,7 +46,6 @@ class UserApiController extends \VuFindApi\Controller\ApiController
     use \AkSearchApi\Controller\ApiTrait;
     use \AkSearch\ILS\Driver\AlmaTrait;
     use \VuFind\Log\LoggerAwareTrait;
-    use \VuFind\ILS\Driver\CacheTrait;
 
 
     /**
@@ -190,8 +189,8 @@ class UserApiController extends \VuFindApi\Controller\ApiController
 
         // Try to authenticate and process the result
         try {
-            // Try to login and get user object
-            $user = $this->getAuthManager()->login($this->getRequest());
+            // Try to login
+            $this->getAuthManager()->login($this->getRequest());
 
             // If we got this far without an exception thrown in the login function,
             // the user with the given credentials exists.
