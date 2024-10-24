@@ -4,9 +4,11 @@ namespace AkSearchApi\Module\Configuration;
 $config = [
     'controllers' => [
         'factories' => [
+            'AkSearchApi\Controller\ApiController' => 'VuFindApi\Controller\ApiControllerFactory',
             'AkSearchApi\Controller\UserApiController' => 'AkSearchApi\Controller\UserApiControllerFactory'
         ],
         'aliases' => [
+            'Api' => 'AkSearchApi\Controller\ApiController',
             'UserApi' => 'AkSearchApi\Controller\UserApiController',
             'userapi' => 'UserApi'
         ]
