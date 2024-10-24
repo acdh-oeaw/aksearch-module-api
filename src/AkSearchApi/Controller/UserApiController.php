@@ -40,7 +40,7 @@ use VuFind\Cache\Manager as CacheManager;
  * @license  https://opensource.org/licenses/gpl-2.0.php GNU General Public License
  * @link     https://vufind.org/wiki/development:plugins:controllers Wiki
  */
-class UserApiController extends \VuFindApi\Controller\ApiController
+class UserApiController extends \AkSearchApi\Controller\ApiController
     implements \VuFindApi\Controller\ApiInterface, \Laminas\Log\LoggerAwareInterface
 {
     use \AkSearchApi\Controller\ApiTrait;
