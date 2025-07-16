@@ -2,9 +2,9 @@
 /**
  * Factory for User API controller.
  *
- * PHP version 7
+ * PHP version 8
  *
- * Copyright (C) AK Bibliothek Wien 2020.
+ * Copyright (C) AK Bibliothek Wien 2025.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2,
@@ -21,7 +21,7 @@
  *
  * @category AKsearch
  * @package  Controller
- * @author   Michael Birkner <michael.birkner@akwien.at>
+ * @author   Michael Birkner-Tröger <michael.birkner@akwien.at>
  * @license  https://opensource.org/licenses/gpl-2.0.php GNU General Public License
  * @link     https://vufind.org/wiki/development:plugins:controllers Wiki
  */
@@ -34,11 +34,11 @@ use Psr\Container\ContainerExceptionInterface as ContainerException;
 use Psr\Container\ContainerInterface;
 
 /**
- * AK: Factory for User API controller.
+ * Factory for User API controller.
  * 
  * @category AKsearch
  * @package  Controller
- * @author   Michael Birkner <michael.birkner@akwien.at>
+ * @author   Michael Birkner-Tröger <michael.birkner@akwien.at>
  * @license  https://opensource.org/licenses/gpl-2.0.php GNU General Public License
  * @link     https://vufind.org/wiki/development:plugins:controllers Wiki
  */
@@ -68,7 +68,8 @@ class UserApiControllerFactory implements FactoryInterface
         }
         return new $requestedName(
             $container,
-            $container->get(\VuFind\Cache\Manager::class)
+            $container->get(\VuFind\Cache\Manager::class),
+            $container->get(\AkSearch\Mailer\Mailer::class)
         );
     }
 
