@@ -2,9 +2,9 @@
 /**
  * AK: User API controller.
  *
- * PHP version 7
+ * PHP version 8
  *
- * Copyright (C) AK Bibliothek Wien 2020.
+ * Copyright (C) AK Bibliothek Wien 2025.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2,
@@ -21,7 +21,7 @@
  *
  * @category AKsearch
  * @package  Controller
- * @author   Michael Birkner <michael.birkner@akwien.at>
+ * @author   Michael Birkner-Tröger <michael.birkner@akwien.at>
  * @license  https://opensource.org/licenses/gpl-2.0.php GNU General Public License
  * @link     https://vufind.org/wiki/development:plugins:controllers Wiki
  */
@@ -36,7 +36,7 @@ use VuFind\Cache\Manager as CacheManager;
  * 
  * @category AKsearch
  * @package  Controller
- * @author   Michael Birkner <michael.birkner@akwien.at>
+ * @author   Michael Birkner-Tröger <michael.birkner@akwien.at>
  * @license  https://opensource.org/licenses/gpl-2.0.php GNU General Public License
  * @link     https://vufind.org/wiki/development:plugins:controllers Wiki
  */
@@ -54,15 +54,25 @@ class UserApiController extends \AkSearchApi\Controller\ApiController
 	 * @var CacheManager
 	 */
     protected $cache;
+
+    /**
+     * AK: Mailer for e. g. sending welcome mails after user registration
+     *
+     * @var \AkSearch\Mailer\Mailer
+     */
+    protected $mailer;
     
     /**
      * AK: Constructor
      *
      * @param ServiceLocatorInterface $sm Service manager
      */
-    public function __construct(ServiceLocatorInterface $sm, CacheManager $cache) {
+    public function __construct(ServiceLocatorInterface $sm, CacheManager $cache,
+        \AkSearch\Mailer\Mailer $mailer
+    ) {
         parent::__construct($sm);
         $this->cache = $cache;
+        $this->mailer = $mailer;
     }
 
     /**
@@ -372,6 +382,57 @@ class UserApiController extends \AkSearchApi\Controller\ApiController
         }
 
         return $this->output($content, $status, $httpStatusCode);
+    }
+
+    /**
+     * Create new user action
+     *
+     * @return \Laminas\Http\Response
+     */
+    public function createAction()
+    {
+        // Check permission
+        if ($result = $this->isAccessDenied('access.api.AK.User.Create')) {
+            return $result;
+        }
+
+        // Get HTTP request object
+        $request = $this->getRequest();
+
+        // Get request method (GET, POST, ...)
+        $requestMethod = $request->getMethod();
+        
+        // Check if we got a POST request
+		if ($requestMethod != 'POST') {
+            return $this->output([], self::STATUS_ERROR, 405,
+                'Only POST requests are allowed');
+        }
+
+        // Pass data on to "create user" function
+        $user = $this->getAuthManager()->create($request);
+
+        // AK: Check if a welcome e-mail should be sent to the user
+        if ($this->getAuthManager()->supportsWelcomeEmail()) {
+            $this->mailer->sendWelcomeEmail($request, $user);
+        }
+
+        // AK: Check if an information e-mail should be sent to the library
+        if ($this->getAuthManager()->supportsLibraryEmail()) {
+            $this->mailer->sendEmailToLibrary($request, $user);
+        }
+
+        return $this->output([], self::STATUS_OK, 204);
+    }
+
+    /**
+     * Get the account manager object.
+     * AK: Get the custom AkSearch auth manager
+     *
+     * @return \AkSearch\Auth\Manager
+     */
+    protected function getAuthManager()
+    {
+        return $this->serviceLocator->get(\AkSearch\Auth\Manager::class);
     }
 
     /**
