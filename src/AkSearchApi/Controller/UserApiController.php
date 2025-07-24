@@ -404,24 +404,42 @@ class UserApiController extends \AkSearchApi\Controller\ApiController
         
         // Check if we got a POST request
 		if ($requestMethod != 'POST') {
-            return $this->output([], self::STATUS_ERROR, 405,
-                'Only POST requests are allowed');
+            $errorMsg = 'Only POST requests are allowed';
+            $response = $this->output([], self::STATUS_ERROR, 405, $errorMsg);
+            $response->setReasonPhrase($errorMsg);
+            return $response;
         }
 
         // Pass data on to "create user" function
-        $user = $this->getAuthManager()->create($request);
+        $user = null;
+        try {
+            $user = $this->getAuthManager()->create($request);
+        } catch (\VuFind\Exception\Auth $authException) {
+            $authExMsg = $authException->getMessage();
+            $response = $this->output([], self::STATUS_ERROR, 400, $authExMsg);
+            $response->setReasonPhrase($authExMsg);
+            return $response;
+        } catch(\Exception $e) {
+            $exMsg = $e->getMessage();
+            $response = $this->output([], self::STATUS_ERROR, 500, $exMsg);
+            $response->setReasonPhrase($exMsg);
+            return $response;
+        }
 
         // AK: Check if a welcome e-mail should be sent to the user
-        if ($this->getAuthManager()->supportsWelcomeEmail()) {
+        if ($user && $this->getAuthManager()->supportsWelcomeEmail()) {
             $this->mailer->sendWelcomeEmail($request, $user);
         }
 
         // AK: Check if an information e-mail should be sent to the library
-        if ($this->getAuthManager()->supportsLibraryEmail()) {
+        if ($user && $this->getAuthManager()->supportsLibraryEmail()) {
             $this->mailer->sendEmailToLibrary($request, $user);
         }
-
-        return $this->output([], self::STATUS_OK, 204);
+        
+        $successMsg = 'Account successfully created';
+        $response = $this->output([], self::STATUS_OK, 200, $successMsg);
+        $response->setReasonPhrase($successMsg);
+        return $response;
     }
 
     /**
